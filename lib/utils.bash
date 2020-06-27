@@ -2,7 +2,6 @@
 
 set -euo pipefail
 
-# TODO: Ensure this is the correct GitHub homepage where releases can be downloaded for dome.
 GH_REPO="https://github.com/avivbeeri/dome"
 
 fail() {
@@ -12,7 +11,6 @@ fail() {
 
 curl_opts=(-fsSL)
 
-# NOTE: You might want to remove this if dome is not hosted on GitHub releases.
 if [ -n "${GITHUB_API_TOKEN:-}" ]; then
   curl_opts=("${curl_opts[@]}" -H "Authorization: token $GITHUB_API_TOKEN")
 fi
@@ -25,22 +23,21 @@ sort_versions() {
 list_github_tags() {
   git ls-remote --tags --refs "$GH_REPO" |
     grep -o 'refs/tags/.*' | cut -d/ -f3- |
-    sed 's/^v//' # NOTE: You might want to adapt this sed to remove non-version strings from tags
+    sed 's/^v//'
 }
 
 list_all_versions() {
-  # TODO: Adapt this. By default we simply list the tag names from GitHub releases.
-  # Change this function if dome has other means of determining installable versions.
   list_github_tags
 }
 
 download_release() {
-  local version filename url
-  version="$1"
-  filename="$2"
+  local version platform arch filename url
+  platform="$1"
+  arch="$2"
+  version="$3"
+  filename="$4"
 
-  # TODO: Adapt the release URL convention for dome
-  url="$GH_REPO/archive/v${version}.tar.gz"
+  url="$GH_REPO/releases/download/v${version}/dome-${version}-${platform}-${arch}.zip"
 
   echo "* Downloading dome release $version..."
   curl "${curl_opts[@]}" -o "$filename" -C - "$url" || fail "Could not download $url"
@@ -55,18 +52,29 @@ install_version() {
     fail "asdf-dome supports release installs only"
   fi
 
-  # TODO: Adapt this to proper extension and adapt extracting strategy.
-  local release_file="$install_path/dome-$version.tar.gz"
+  local platform
+
+  case "$OSTYPE" in
+    darwin*) platform="macosx" ;;
+    linux*) platform="linux" ;;
+    *) fail "Unsupported platform" ;;
+  esac
+
+  local arch
+
+  case "$(uname -m)" in
+    x86_64*) arch="x64" ;;
+    *) fail "Unsupported architecture" ;;
+  esac
+
+  local release_file="$install_path/dome-${version}-${platform}-${arch}.zip"
   (
-    mkdir -p "$install_path"
-    download_release "$version" "$release_file"
-    tar -xzf "$release_file" -C "$install_path" --strip-components=1 || fail "Could not extract $release_file"
+    mkdir -p "$install_path/bin"
+    download_release "$platform" "$arch" "$version" "$release_file"
+    unzip -j "$release_file" -d "$install_path/bin" || fail "Could not extract $release_file"
     rm "$release_file"
 
-    # TODO: Asert dome executable exists.
-    local tool_cmd
-    tool_cmd="$(echo "dome --help" | cut -d' ' -f2-)"
-    test -x "$install_path/bin/$tool_cmd" || fail "Expected $install_path/bin/$tool_cmd to be executable."
+    test -x "$install_path/bin/dome" || fail "Expected $install_path/bin/dome to be executable."
 
     echo "dome $version installation was successful!"
   ) || (
