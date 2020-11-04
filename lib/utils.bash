@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-GH_REPO="https://github.com/avivbeeri/dome"
+GH_REPO="https://github.com/domeengine/dome"
 
 fail() {
   echo -e "asdf-dome: $*"
@@ -23,7 +23,7 @@ sort_versions() {
 list_github_tags() {
   git ls-remote --tags --refs "$GH_REPO" |
     grep -o 'refs/tags/.*' | cut -d/ -f3- |
-    sed 's/^v//'
+    sed 's/^v\.\?//'
 }
 
 list_all_versions() {
