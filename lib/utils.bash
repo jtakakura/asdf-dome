@@ -30,6 +30,12 @@ list_all_versions() {
   list_github_tags
 }
 
+valid_url() {
+  local url="$1"
+
+  [ $(curl -LI $url -o /dev/null -w '%{http_code}\n' -s) == "200" ] && echo 0
+}
+
 download_release() {
   local version platform arch filename url
   platform="$1"
@@ -38,6 +44,20 @@ download_release() {
   filename="$4"
 
   url="$GH_REPO/releases/download/v${version}/dome-${version}-${platform}-${arch}.zip"
+
+  if [ ! valid_url url ]; then
+    echo "Not found $url"
+    url="$GH_REPO/releases/download/v${version}/dome-v${version}-${platform}-${arch}.zip"
+
+    if [ ! valid_url url ]; then
+      echo "Not found $url"
+      url="$GH_REPO/releases/download/${version}/dome-${version}-${platform}-${arch}.zip"
+
+      if [ ! valid_url url ]; then
+         fail "Not found $url"
+      fi
+    fi
+  fi
 
   echo "* Downloading dome release $version..."
   curl "${curl_opts[@]}" -o "$filename" -C - "$url" || fail "Could not download $url"
