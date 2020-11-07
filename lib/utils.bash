@@ -37,8 +37,8 @@ download_release() {
   version="$3"
   filename="$4"
 
-  path="`echo $GH_REPO | sed -E 's|https://github.com/||'`"
-  url=`curl -s "https://api.github.com/repos/${path}/releases" | grep -m1 "http.*${version}-${platform}-${arch}.zip" | sed -E 's/.*"([^"]+)".*/\1/'`
+  path="$(echo $GH_REPO | sed -E 's|https://github.com/||')"
+  url=$(curl -s "https://api.github.com/repos/${path}/releases" | grep -m1 "http.*${version}-${platform}-${arch}.zip" | sed -E 's/.*"([^"]+)".*/\1/')
 
   echo "* Downloading dome release $version..."
   curl "${curl_opts[@]}" -o "$filename" -C - "$url" || fail "Could not download $url"
