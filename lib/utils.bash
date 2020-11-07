@@ -30,12 +30,6 @@ list_all_versions() {
   list_github_tags
 }
 
-valid_url() {
-  local url="$1"
-
-  [ $(curl -LI $url -o /dev/null -w '%{http_code}\n' -s) == "200" ] && echo 0
-}
-
 download_release() {
   local version platform arch filename url
   platform="$1"
@@ -43,21 +37,8 @@ download_release() {
   version="$3"
   filename="$4"
 
-  url="$GH_REPO/releases/download/v${version}/dome-${version}-${platform}-${arch}.zip"
-
-  if [ ! valid_url url ]; then
-    echo "Not found $url"
-    url="$GH_REPO/releases/download/v${version}/dome-v${version}-${platform}-${arch}.zip"
-
-    if [ ! valid_url url ]; then
-      echo "Not found $url"
-      url="$GH_REPO/releases/download/${version}/dome-${version}-${platform}-${arch}.zip"
-
-      if [ ! valid_url url ]; then
-         fail "Not found $url"
-      fi
-    fi
-  fi
+  path="`echo $GH_REPO | sed -E 's|https://github.com/||'`"
+  url=`curl -s "https://api.github.com/repos/${path}/releases" | grep -m1 "http.*${version}-${platform}-${arch}.zip" | sed -E 's/.*"([^"]+)".*/\1/'`
 
   echo "* Downloading dome release $version..."
   curl "${curl_opts[@]}" -o "$filename" -C - "$url" || fail "Could not download $url"
@@ -94,7 +75,7 @@ install_version() {
     unzip -j "$release_file" -d "$install_path/bin" || fail "Could not extract $release_file"
     rm "$release_file"
 
-    test -x "$install_path/bin/dome" || fail "Expected $install_path/bin/dome to be executable."
+    test -x "$install_path/bin/dome" || chmod +x "$install_path/bin/dome"
 
     echo "dome $version installation was successful!"
   ) || (
